@@ -1,0 +1,60 @@
+openapi: 3.0.0
+info:
+  title: Customer Service API
+  version: 2.0.0
+
+paths:
+  /customers:
+    get:
+      summary: Retrieve all customers
+      responses:
+        '200':
+          description: Customer list
+
+  /customers/{id}:
+    get:
+      summary: Fetch customer by ID
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Customer details
+
+  /customers/search:
+    post:
+      summary: Search customers
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name:
+                  type: string
+      responses:
+        '200':
+          description: Search results
+
+components:
+  schemas:
+    Customer:
+      type: object
+      required:
+        - id
+        - name
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        email:
+          type: string
+        ssn:
+          type: string
+        phone:
+          type: string
