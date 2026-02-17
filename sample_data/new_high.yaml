@@ -1,0 +1,17 @@
+openapi: 3.0.0
+info:
+  title: Customer API
+  version: 2.0.0
+
+paths:
+  /customers:
+    get:
+      summary: Get all customers
+
+  /clients:
+    get:
+      summary: Get all clients (renamed endpoint)
+
+  /customers/{id}:
+    get:
+      summary: Get customer by ID
