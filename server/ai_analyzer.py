@@ -11,6 +11,19 @@ client = genai.Client(api_key=os.getenv("GEMINI_API_KEY"))
 
 def analyze_with_ai(diff_result, new_spec):
 
+    # Only send what the AI needs — not the full spec
+    minimal_spec = {
+        "paths": {
+            path: {
+                method: {"summary": details.get("summary", ""), "parameters": details.get("parameters", [])}
+                for method, details in methods.items()
+                if isinstance(details, dict)
+            }
+            for path, methods in new_spec.get("paths", {}).items()
+        },
+        "schemas": new_spec.get("components", {}).get("schemas", {}),
+    }
+
     prompt = f"""
     You are a senior API governance architect in a regulated financial institution.
 
@@ -24,8 +37,8 @@ def analyze_with_ai(diff_result, new_spec):
     DIFF RESULT:
     {json.dumps(diff_result, indent=2)}
 
-    NEW SPEC:
-    {json.dumps(new_spec, indent=2)}
+    NEW SPEC (paths summary only):
+    {json.dumps(minimal_spec, indent=2)}
 
     Analyze:
     - Backward compatibility risk

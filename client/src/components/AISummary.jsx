@@ -1,26 +1,22 @@
 import React from "react";
-import { Sparkles, AlertTriangle, Shield, Info } from "lucide-react";
+import { Sparkles, AlertTriangle, Shield, Info, Loader2 } from "lucide-react";
 import { Card, CardHeader } from "./ui/Card";
 
-function AISummary({ ai }) {
+function AISummary({ ai, isStreaming, rawText }) {
   // Helper to parse potential Python-stringified lists/objects
   const parseValue = (value) => {
     if (typeof value !== 'string') return value;
 
-    // Try to parse if it looks like a list or object
     const trimmed = value.trim();
     if ((trimmed.startsWith('[') && trimmed.endsWith(']')) || 
         (trimmed.startsWith('{') && trimmed.endsWith('}'))) {
       try {
-        // Replace single quotes with double quotes for JSON compatibility
-        // This is a naive heuristic but works for simple Python 'repr' output
         const jsonString = trimmed.replace(/'/g, '"')
                                   .replace(/None/g, 'null')
                                   .replace(/True/g, 'true')
                                   .replace(/False/g, 'false');
         return JSON.parse(jsonString);
       } catch (e) {
-        // If parsing fails, return original string
         return value;
       }
     }
@@ -36,7 +32,7 @@ function AISummary({ ai }) {
         <ul className="list-disc list-inside space-y-1 ml-1">
           {parsed.map((item, i) => (
             <li key={i} className="text-slate-300 text-sm">
-              {typeof item === 'object' ? renderValue(item) : item}
+              {typeof item === 'object' ? renderValue(item) : String(item)}
             </li>
           ))}
         </ul>
@@ -60,14 +56,41 @@ function AISummary({ ai }) {
   };
 
   const renderContent = () => {
-    if (!ai) return <p className="text-slate-400 italic">No analysis available.</p>;
-
-    if (typeof ai === 'string') {
+    // Streaming state — show raw text with a cursor
+    if (isStreaming) {
       return (
-        <div className="prose prose-invert prose-sm max-w-none text-slate-300">
-          <p>{ai}</p>
+        <div className="space-y-3">
+          <div className="flex items-center gap-2 text-blue-400 text-sm mb-4">
+            <Loader2 size={14} className="animate-spin" />
+            <span>AI is analyzing your API changes...</span>
+          </div>
+          <div className="font-mono text-xs text-slate-400 bg-slate-950/50 rounded-lg p-4 border border-blue-500/10 min-h-[120px] whitespace-pre-wrap break-words leading-relaxed">
+            {rawText}
+            <span className="inline-block w-2 h-4 bg-blue-400 ml-0.5 animate-pulse align-middle" />
+          </div>
         </div>
       );
+    }
+
+    if (!ai) {
+      return (
+        <div className="flex items-center gap-2 text-slate-500 text-sm">
+          <Loader2 size={14} className="animate-spin" />
+          Waiting for analysis...
+        </div>
+      );
+    }
+
+    if (ai.error) {
+      return (
+        <div className="text-red-400 text-sm bg-red-500/10 rounded-lg p-3 border border-red-500/20">
+          ⚠️ {ai.error}
+        </div>
+      );
+    }
+
+    if (typeof ai === 'string') {
+      return <p className="text-slate-300 text-sm leading-relaxed">{ai}</p>;
     }
     
     if (typeof ai === 'object') {
@@ -108,8 +131,8 @@ function AISummary({ ai }) {
       
       <CardHeader 
         title="AI Security Analysis" 
-        description="Automated insights on potential vulnerabilities."
-        icon={Sparkles}
+        description={isStreaming ? "Generating insights..." : "Automated insights on potential vulnerabilities."}
+        icon={isStreaming ? Loader2 : Sparkles}
         className="pb-2 border-b border-white/5 mb-4"
       />
 
