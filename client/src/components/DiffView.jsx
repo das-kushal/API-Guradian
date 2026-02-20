@@ -1,12 +1,21 @@
 import React from "react";
-import { GitCompare, Trash2, Edit3 } from "lucide-react";
+import { GitCompare, Trash2, Edit3, Plus, Shield, AlertTriangle, FileWarning } from "lucide-react";
 import { Card, CardHeader } from "./ui/Card";
 import { Badge } from "./ui/Badge";
 
 function DiffView({ diff }) {
-  const hasChanges = 
-    (diff?.removed_endpoints && diff.removed_endpoints.length > 0) ||
-    (diff?.method_changes && Object.keys(diff.method_changes).length > 0);
+  if (!diff) return null;
+
+  const hasChanges =
+    (diff.removed_endpoints?.length > 0) ||
+    (diff.added_endpoints?.length > 0) ||
+    (diff.method_changes?.length > 0) ||
+    (diff.parameter_changes?.length > 0) ||
+    (diff.pii_fields_detected?.length > 0) ||
+    (diff.naming_issues?.length > 0) ||
+    (diff.missing_descriptions?.length > 0) ||
+    (diff.schema_changes?.removed_schemas?.length > 0) ||
+    (diff.schema_changes?.field_changes?.length > 0);
 
   if (!hasChanges) {
     return (
@@ -22,46 +31,48 @@ function DiffView({ diff }) {
 
   return (
     <Card className="h-full">
-      <CardHeader 
-        title="Breaking Changes" 
-        description="Detected modifications that may impact API consumers."
+      <CardHeader
+        title="API Diff Analysis"
+        description="Deterministic analysis of structural changes."
         icon={GitCompare}
       />
-      
+
       <div className="space-y-6">
         {/* Removed Endpoints */}
-        {diff.removed_endpoints?.length > 0 && (
-          <div>
-            <h4 className="flex items-center gap-2 text-sm font-medium text-red-400 mb-3 uppercase tracking-wider">
-              <Trash2 size={14} /> Removed Endpoints
-            </h4>
-            <div className="bg-slate-950/50 rounded-lg border border-red-500/20 overflow-hidden">
-              {diff.removed_endpoints.map((endpoint, idx) => (
-                <div 
-                  key={idx} 
-                  className="px-4 py-3 border-b border-red-500/10 last:border-0 flex items-center gap-3"
-                >
-                  <span className="font-mono text-sm text-slate-300">{endpoint}</span>
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
+        <DiffSection
+          items={diff.removed_endpoints}
+          title="Removed Endpoints"
+          icon={Trash2}
+          colorClass="red"
+          renderItem={(ep) => <span className="font-mono text-sm text-slate-300">{ep}</span>}
+        />
+
+        {/* Added Endpoints */}
+        <DiffSection
+          items={diff.added_endpoints}
+          title="Added Endpoints"
+          icon={Plus}
+          colorClass="emerald"
+          renderItem={(ep) => <span className="font-mono text-sm text-slate-300">{ep}</span>}
+        />
 
         {/* Method Changes */}
-        {diff.method_changes && Object.keys(diff.method_changes).length > 0 && (
+        {diff.method_changes?.length > 0 && (
           <div>
-            <h4 className="flex items-center gap-2 text-sm font-medium text-amber-400 mb-3 uppercase tracking-wider">
-              <Edit3 size={14} /> Method Changes
-            </h4>
-            <div className="space-y-3">
-              {Object.entries(diff.method_changes).map(([endpoint, changes], idx) => (
-                <div key={idx} className="bg-slate-950/50 rounded-lg border border-amber-500/20 p-4">
-                  <div className="mb-2 font-mono text-xs text-slate-500 break-all">{endpoint}</div>
+            <SectionHeader title="Method Changes" icon={Edit3} colorClass="amber" />
+            <div className="space-y-2">
+              {diff.method_changes.map((mc, idx) => (
+                <div key={idx} className="bg-slate-950/50 rounded-lg border border-amber-500/20 p-3">
+                  <div className="font-mono text-xs text-slate-500 mb-2">{mc.path}</div>
                   <div className="flex flex-wrap gap-2">
-                    {Object.entries(changes).map(([key, value], i) => (
-                      <Badge key={i} variant="warning" className="font-mono">
-                        {key}: {JSON.stringify(value)}
+                    {mc.removed_methods?.map((m, i) => (
+                      <Badge key={`r-${i}`} variant="danger" className="font-mono text-xs">
+                        - {m.toUpperCase()}
+                      </Badge>
+                    ))}
+                    {mc.added_methods?.map((m, i) => (
+                      <Badge key={`a-${i}`} variant="success" className="font-mono text-xs">
+                        + {m.toUpperCase()}
                       </Badge>
                     ))}
                   </div>
@@ -70,8 +81,61 @@ function DiffView({ diff }) {
             </div>
           </div>
         )}
+
+        {/* PII Fields Detected */}
+        <DiffSection
+          items={diff.pii_fields_detected}
+          title="PII Fields Detected"
+          icon={Shield}
+          colorClass="purple"
+          renderItem={(f) => <span className="font-mono text-sm text-purple-300">{f}</span>}
+        />
+
+        {/* Naming Issues */}
+        <DiffSection
+          items={diff.naming_issues}
+          title="Naming Anti-Patterns"
+          icon={AlertTriangle}
+          colorClass="amber"
+          renderItem={(issue) => <span className="text-sm text-slate-300">{issue}</span>}
+        />
+
+        {/* Missing Descriptions */}
+        <DiffSection
+          items={diff.missing_descriptions}
+          title="Missing Descriptions"
+          icon={FileWarning}
+          colorClass="slate"
+          renderItem={(ep) => <span className="font-mono text-sm text-slate-400">{ep}</span>}
+        />
       </div>
     </Card>
+  );
+}
+
+/** Reusable section header */
+function SectionHeader({ title, icon: Icon, colorClass }) {
+  return (
+    <h4 className={`flex items-center gap-2 text-sm font-medium text-${colorClass}-400 mb-3 uppercase tracking-wider`}>
+      <Icon size={14} /> {title}
+    </h4>
+  );
+}
+
+/** Reusable diff section for simple list items */
+function DiffSection({ items, title, icon, colorClass, renderItem }) {
+  if (!items || items.length === 0) return null;
+  return (
+    <div>
+      <SectionHeader title={title} icon={icon} colorClass={colorClass} />
+      <div className={`bg-slate-950/50 rounded-lg border border-${colorClass}-500/20 overflow-hidden`}>
+        {items.map((item, idx) => (
+          <div key={idx} className={`px-4 py-3 border-b border-${colorClass}-500/10 last:border-0 flex items-center gap-3`}>
+            {renderItem(item)}
+          </div>
+        ))}
+      </div>
+    </div>
   );
 }
 
